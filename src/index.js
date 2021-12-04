@@ -44,8 +44,8 @@ window.addEventListener('DOMContentLoaded', function () {
     init: function init() {
       window.addEventListener('hashchange', index.hashRoute);
 
-      insertStylesheet('http://amio.github.io/gh-index/index.css');
-      // insertStylesheet('index.css')
+      // insertStylesheet('http://amio.github.io/gh-index/index.css');
+      insertStylesheet('src/index.css')
       insertStylesheetAsync('https://octicons.github.com/components/octicons/octicons/octicons.css');
       window.fetch || insertScript('https://cdn.jsdelivr.net/fetch/0.9.0/fetch.min.js');
 
