@@ -5,7 +5,7 @@
  * An directory index for gh-pages.
  */
 
-window.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('DOMContentLoaded', function () {
     var wrapper = document.getElementById('gh-index');
 
     function insertStylesheet(url) {
@@ -17,12 +17,12 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 
     function insertStylesheetAsync(url) {
-        var raf = function() {
-            return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function(callback) {
+        var raf = function () {
+            return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) {
                 window.setTimeout(callback, 1000 / 60);
             };
         }();
-        raf(function() {
+        raf(function () {
             insertStylesheet(url);
         });
     }
@@ -70,9 +70,9 @@ window.addEventListener('DOMContentLoaded', function() {
             if (!repo) return window.alert('Repo config missing!');
 
             var uri = 'https://api.github.com/repos/' + repo.owner + '/' + repo.name + ('/git/trees/' + repo.branch + '?recursive=1');
-            window.fetch(uri, { cache: 'force-cache' }).then(function(resp) {
+            window.fetch(uri, { cache: 'force-cache' }).then(function (resp) {
                 return resp.json();
-            }).then(function(result) {
+            }).then(function (result) {
                 index.refresh(result.tree);
             });
         },
@@ -101,6 +101,7 @@ window.addEventListener('DOMContentLoaded', function() {
             }
 
             index.updateIndexies(sub);
+            removeAllSvg();
         },
 
         /**
@@ -127,7 +128,7 @@ window.addEventListener('DOMContentLoaded', function() {
          */
         addItem: function addItem(tree, item) {
             var parent = tree;
-            item.path.replace(/[^/]+/g, function(seg, idx) {
+            item.path.replace(/[^/]+/g, function (seg, idx) {
                 parent[seg] || (parent[seg] = {});
                 parent = parent[seg];
                 return idx;
@@ -154,14 +155,14 @@ window.addEventListener('DOMContentLoaded', function() {
             // generate list html
             var repo = index.getRepoInfo();
             var home = 'http://' + repo.owner + '.github.io/' + repo.name + '/';
-            var items = Object.keys(tree).map(function(key) {
+            var items = Object.keys(tree).map(function (key) {
                 if (key === '/NODE/') return '';
 
                 var node = tree[key]['/NODE/'];
                 var str = '';
                 switch (node.type) {
                     case 'blob':
-                        str = '<li class="blob"><a href="' + (home + node.path) + '">' + ('<span class="octicon octicon-file-text"></span> ' + node.path + '</a></li>');
+                        str = '<li class="blob"><a class="lazy" href="' + (home + node.path) + '">' + ('<span class="octicon octicon-file-text"></span> ' + node.path + '</a></li>');
                         break;
                     case 'tree':
                         str = '<li class="tree"><a href="#' + node.path + '/">' + ('<span class="octicon octicon-file-directory"></span> ' + node.path + '/</a></li>');
@@ -181,3 +182,69 @@ window.addEventListener('DOMContentLoaded', function() {
 
     index.init();
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    let active = false;
+
+    const lazyLoad = function () {
+        var lazyLinks = [].slice.call(document.querySelectorAll('a.lazy'));
+        if (active === false) {
+            active = true;
+            console.log(lazyLinks);
+            setTimeout(function () {
+                lazyLinks.forEach(function (lazyLinks) {
+                    if ((lazyLinks.getBoundingClientRect().top <= window.innerHeight && lazyLinks.getBoundingClientRect().bottom >= 0) && getComputedStyle(lazyLinks).display !== "none") {
+                        console.log(lazyLinks);
+                        makeReportPreview(lazyLinks);
+                        lazyLinks.classList.remove('lazy');
+
+                        if (lazyLinks.length === 0) {
+                            document.removeEventListener('scroll', lazyLoad);
+                            window.removeEventListener('resize', lazyLoad);
+                            window.removeEventListener('orientationchange', lazyLoad);
+                        }
+                    }
+                });
+
+                active = false;
+            }, 200);
+        }
+    };
+
+    document.addEventListener('scroll', lazyLoad);
+    window.addEventListener('resize', lazyLoad);
+    window.addEventListener('orientationchange', lazyLoad);
+});
+
+
+function makeReportPreview(linkObj) {
+    var pageAddress = linkObj.getAttribute('href'); // linklerdeki adresleri al
+    if (pageAddress != undefined) { // adres bilgisi boş değilse
+
+        pageAddress = pageAddress.replace('http://ysdede.github.io/benchmarks/', ''); //cross origin kısıtlamasına takılmamak için kök adresi sil kendi siten içindeki dosyayı okuduğun anlaşılsın
+
+        fetch(pageAddress)
+            .then(response => response.text())
+            .then(result => { // içerik çekme tamamlandığında
+                let parser = new DOMParser();
+                var doc = parser.parseFromString(result, 'text/html'); // içeriği html dom yapısına çevir
+
+                if (doc.getElementById('left')) {
+                    var getContent = doc.getElementById('left').firstElementChild.innerHTML; // çekilen sayfada left IS'si altındaki ilk divi içini al
+                    getContent = '<a class="svg" href="' + pageAddress + '" target="_blank">' + getContent + '</a>'; // sayfadan çektiğin içeriğe sayfanın linkini ekle
+                    var body = document.getElementsByTagName('BODY')[0];
+                    linkObj.closest('li').insertAdjacentHTML('beforeend', getContent); // bulunduğun sayfanın gövdesinde sona bas
+                    linkObj.style.display = 'none'; // linki gizle
+                }
+            });
+    }
+}
+
+function removeAllSvg() {
+    var svgs = document.querySelectorAll('.svg');
+    for (let i = 0; i < svgs.length; i++) {
+        svgs[i].remove();
+    }
+    window.scrollTo(window.scrollX, window.scrollY + 1);
+}
